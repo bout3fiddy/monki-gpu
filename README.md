@@ -67,6 +67,25 @@ Reaching the cap saves the result without claiming convergence.
 This estimates sampling precision. Physical accuracy requires independent validation;
 rare paths and repeated checks can underestimate uncertainty. Omit the policy for fixed-round execution.
 
+## Reference–Metal comparison
+
+[Run script](scripts/run_comparison.py): builds both backends, runs the original
+Fortran executable and Metal, and saves NetCDF results, a JSON report and PNG/SVG plots.
+Requires the macOS setup above.
+
+```sh
+uv run python scripts/run_comparison.py
+uv run python scripts/run_comparison.py --case layered-cloud --threads 4
+```
+
+Figures include simulation conditions, TOA I/Q/U reflectance with ±1 SE, layer
+AMFs, RMSE, maximum absolute differences, radiance differences in combined-SE units,
+and single-run timings. AMF errors are descriptive. Outputs go to a new directory
+under `results/`; radiance comparison failure returns a nonzero exit code.
+Use `--photons-per-column`, `--rounds` or `--output` to override defaults.
+
+![Layered-cloud reference and Metal comparison: reflectance, layer AMFs, errors and timings](docs/figures/layered-cloud-comparison.png)
+
 ## Checks and timings
 
 ```sh
