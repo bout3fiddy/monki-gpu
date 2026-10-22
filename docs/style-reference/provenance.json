@@ -1,0 +1,16 @@
+{
+  "source": "/Users/swadhinnanda/Projects/git/zdisamar",
+  "commit": "97b245d382d4ddba4b700b1bdd212e6086348571",
+  "files": {
+    "STYLEGUIDE.md": "e92a5104fc3eb0ae6b2bedbec3f86ed659765e6c33d6bf2d0568d5a70299d08f",
+    "src/AGENTS.md": "d5553652c3e751782da8f52e3d54c916a1ab7163170700b8b9c28d7be26a1ff1",
+    "pyproject.toml": "c937bac0dc48fc175761b78b4549759b4436c22d88e61cc2bf059447b1377716",
+    ".pre-commit-config.yaml": "a5e8677c2662dd2b2999c4d7825cdb6beb0107bb24326d33de2a89407c42476d",
+    "scripts/linting/check-zig-styleguide.py": "e8318cbebfd74cbc756e3a2a21f45a9f24e65f6f862d0bedbd446af20ad90055"
+  },
+  "adaptation": "Python formatting/lint rules and explicit-dataflow guidance adapted for MONKI. The local zdisamar style reference is a condensed summary; files above records original source hashes. Zig-only linters are not enabled.",
+  "local_summary": {
+    "file": "zdisamar-STYLEGUIDE.md",
+    "sha256": "d630652351fefed85f6e77ca2c6ea129bb571bb9b8f1d1522fc6988d39b21b3c"
+  }
+}

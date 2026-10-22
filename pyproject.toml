@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "monki-rt"
+version = "0.1.0"
+description = "MONKI radiative transfer interfaces and reference validation"
+requires-python = ">=3.14"
+dependencies = ["numpy>=2.0", "netCDF4>=1.7"]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40.2",
+    "clang-format>=23.1.3",
+    "matplotlib>=3.11.2",
+    "pytest>=8",
+    "ruff>=0.11",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["python/monki"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "python/monki", "scripts", "tests", "kernels", "fortran/monki",
+    "validation/cases", "validation/*.py", "validation/README.md",
+    "README.md", "ARCHITECTURE.md", "STYLEGUIDE.md", "AGENTS.md",
+    "docs", "pyproject.toml", "uv.lock", ".pre-commit-config.yaml", ".clang-format",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: executes the compiled MONKI reference"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["fortran", "build", "validation/runs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.basedpyright]
+include = ["python/monki"]
+typeCheckingMode = "basic"
+pythonVersion = "3.14"

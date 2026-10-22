@@ -1,0 +1,11 @@
+{
+  "name": "box-clouds",
+  "input_file": "testrun/MONKI_MLS_2boxclouds_340_340_test.in",
+  "photons_per_column": 200,
+  "rounds": 32,
+  "view_zeniths": [
+    0.0,
+    30.0,
+    60.0
+  ]
+}

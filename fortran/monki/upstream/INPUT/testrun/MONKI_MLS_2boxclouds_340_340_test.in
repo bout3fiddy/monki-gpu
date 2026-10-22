@@ -1,0 +1,91 @@
+INPUT FOR MONTE CARLO RADIATIVE TRANSFER PROGRAM 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GRID PARAMETERS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+30                      :number of columns in horizontal x direction   
+20                      :number of columns in horizontal y direction   
+33                      :number of layers in vertical z direction      
+120.0                   :dimension of domain in horizontal x direction 
+80.0                    :dimension of domain in horizontal y direction 
+1                       :location of the light source, TOA (1) or surface (0) 
+1                       :location of the detector, TOA (1) or surface (0) 
+1                       :definition of output nx*ny grid, surface (0) or TOA (1), only matters for 3D case and VZA>0 deg 
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MONTE CARLO PARAMETERS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+5000                    :number of photons per column per round        
+100                     :maximum number of rounds                      
+.false.                 :stop simulation when result has converged     
+0.001                   :if .true., maximum allowed reflectance standard deviation 
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GENERAL PARAMETERS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3                       :size of Stokes vector (1, 3, or 4)            
+wl                      :use wavelength (wl) in nm or wavenumber (wn) in cm-1 
+340.000                 :min wav of the light (nm or cm-1)             
+340.000                 :max wav of the light (nm or cm-1)             
+1.000                   :wav step size (nm or cm-1)                    
+.false.                 :read gas scat. optical thickness bmsca from file? 
+bmsca.dat               :if .true., what is the bmsca filename?        
+0                       :if .false., inside layer assume hydrostat. equil. (1) or exp. density decay (0)  
+Earth                   :if .false., which planet (for depol. factor and refr. index), Earth or Venus? 
+.false.                 :use fixed depolarization factor? If .false. it is computed from wavelength 
+0.03                    :if .true., what is the fixed depolarization factor? 
+.false.                 :read gas abs. optical thickness bmabs from file? 
+bmabs.dat               :if .true., what is the bmabs filename?        
+baer                    :type of cloud input: number column density (ncol) or COT (baer) 
+.false.                 :save the layer AMFs                           
+.false.                 :save the single and multiple scattering contributions 
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AEROSOL PARAMETERS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1                       :number of aerosol types (with index iaer)     
+Mie_nrvar_ni0/S.sc.     :start name of file with aerosol single scattering expansion coefficients 
+Mie_nrvar_ni0/S.lu.     :start name of file with LUT for aerosol single scattering matrix elements 
+3601                    :number of scattering angles in the LUT between 0 and 180 degrees 
+ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LAYER PARAMETERS (DEFINED AT LEVELS, NR OF LEVELS = nz+1)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1                       :number of absorbing gases                     
+2                       :number of clouds (with index icloud)          
+ 
+k_lev   alt (km)  pres (b)     temp (K)  O3 (ppm)  (ncol(icloud) or baer(icloud),iaer(icloud),ixmin(icloud),ixmax(icloud),iymin(icloud),iymax(icloud),icloud=1,nclouds)
+----------------------------------------------------------------------
+ 1    0.0     1.013000000   294.20   0.3020E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 2    0.50    0.955900000   291.93   0.3180E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 3    1.00    0.902000000   289.70   0.3340E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 4    2.00    0.802000000   285.20   0.3690E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 5    3.00    0.710000000   279.20   0.4220E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 6    4.00    0.628000000   273.20   0.4820E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 7    5.00    0.554000000   267.20   0.5510E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 8    6.00    0.487000000   261.20   0.6410E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+ 9    7.00    0.426000000   254.70   0.7760E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+10    8.00    0.372000000   248.20   0.9130E-01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+11    9.00    0.324000000   241.70   0.1110E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+12   10.00    0.281000000   235.30   0.1300E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+13   11.00    0.243000000   228.80   0.1790E+00   10.00000   1     4     11     8     12   20.00000   1     14     17     9     11
+14   12.00    0.209000000   222.30   0.2230E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+15   13.00    0.179000000   215.80   0.3000E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+16   14.00    0.153000000   215.70   0.4400E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+17   15.00    0.130000000   215.70   0.5000E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+18   16.00    0.111000000   215.70   0.6000E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+19   17.00    0.095000000   215.70   0.7000E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+20   18.00    0.081200000   216.80   0.1000E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+21   19.00    0.069500000   217.90   0.1500E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+22   20.00    0.059500000   219.20   0.2000E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+23   21.00    0.051000000   220.40   0.2400E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+24   22.00    0.043700000   221.60   0.2900E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+25   23.00    0.037600000   222.80   0.3400E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+26   24.00    0.032200000   223.90   0.4000E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+27   25.00    0.027700000   225.10   0.4800E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+28   30.00    0.013200000   233.70   0.7000E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+29   35.00    0.006520000   245.20   0.8900E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+30   40.00    0.003330000   257.50   0.7550E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+31   45.00    0.001760000   269.90   0.4500E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+32   50.00    0.000951000   275.70   0.2800E+01   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+33   70.00    0.000067000   218.10   0.4000E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0
+34  100.00    0.000000258   190.50   0.4000E+00   0.0  0  0  0  0  0   0.0  0  0  0  0  0

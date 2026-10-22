@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "source": "September2026/MC_devel30 supplied by user",
+  "upstream_version": "1.0.1 (source headers)",
+  "upstream_commit": null,
+  "import_date": "2026-10-22",
+  "excluded": "Unused input/data families, historical run/build scripts, Mie generation tools, compiled files and unrelated archived outputs.",
+  "files": {
+    "DATA/Mie_data/Mie_nrvar_ni0/S.lu.00.340": "c2f3feb6a113fe36c95674efea92c086e4081ce0bce7420d4646b68cd9b9a3fd",
+    "DATA/Mie_data/Mie_nrvar_ni0/S.sc.00.340": "786192c417a31b43b55aaccac8bd022811c0f37536ffa0baaf171eecdf718770",
+    "DATA/abs_data/O3T_BP.dat": "726f02bfbb96b485b935801cd1b77e99c66c9b76b5cccc9f84c39b3d7e266316",
+    "INPUT/testrun/MONKI_MLS_1layercloud_340_340_test.in": "879e097b7d267877e39a7ad056bfa8c5332946c4e1ec826d9afa989c1b93d036",
+    "INPUT/testrun/MONKI_MLS_2boxclouds_340_340_test.in": "a88ac5c3c8baa35dac636523a0f0b58a57147bf0d1d9f3718277d6cc98e9f146",
+    "INPUT/testrun/MONKI_MLS_cloudfree_340_340_test.in": "49b60971f1d485fff4ac33c0d5a6c0641200946d275a2908c3168b487a6a50a0",
+    "LICENSE": "9ce73dd83a5f75ae278a8aea6bdfb9d58d78200892ea33f03fe51a6a332a94e3",
+    "OUTPUT/testrun/MONKI_MLS_1layercloud_340_340_test_paper_as_005_th0_045_ph0_000_ph_000.nc": "5d1a22bad6a7d2a3378f908dc07398926fda4caa3aebff0b520805fdc35a9cb5",
+    "OUTPUT/testrun/MONKI_MLS_2boxclouds_340_340_test_paper_as_005_th0_045_ph0_000_ph_000.nc": "827a24b04b93aaaee3c26af1dd17ec58a156c4c099a99a02e7eaecf33949106f",
+    "OUTPUT/testrun/MONKI_MLS_cloudfree_340_340_test_paper_as_005_th0_045_ph0_000_ph_000.nc": "6f818eeb2aa31ebab1092aadfcf077c226ad981e02d406bfcb7aa751c1135383",
+    "PROGRAM/main.f90": "77b020db7b78acacce1378729c091498be9bd4f1655057110179baa18c8caa69",
+    "PROGRAM/mc.f90": "503f0dbcac5d3c569e16d841703f78f618d5e31dc274531b57bdd990a629d746",
+    "PROGRAM/modules/get_O3_crabs.f90": "14f42ea565af9379ea7385f24817a60c03953299bba185d805b9839e1aba5d87",
+    "PROGRAM/modules/interpol_sp.f": "ab5a25e46cd43367cb900df1a2cdd3aa65a6cc66ee5fb2d77825d20592762633",
+    "PROGRAM/modules/main_routines_cartesian_mod.f90": "4caa8563abc42051ac42a1098cbf98abd9005dfa2fae4fdc5bc6c1744d618336",
+    "PROGRAM/modules/main_routines_general_mod.f90": "35821d517b834f67deac4da1f7d83ef6238c3c469484a6b7c6069cdde6119b67",
+    "PROGRAM/modules/mc_routines_cartesian_mod.f90": "1c1043cb4a1fc716f8e0a49fb0272e25a9eb46429f2c0c633138066b9992023a",
+    "PROGRAM/modules/mc_routines_general_mod.f90": "3ea947410c0562e538fd0b1439c3efa5c97907184ef055a78b98299557aa76e4",
+    "PROGRAM/modules/ncdf_utilities_mod.f90": "5d93723e68b1b1e68aebe535f185fc5ed9f54dd3d75d9fae8199bb94e09aa072",
+    "PROGRAM/modules/new_data_types_mod.f90": "2a03e8e8e0f2161bda246f17795871808a86a4f66facb8c4911f5249fe676cf8",
+    "PROGRAM/modules/physical_parameters_mod.f90": "7c92a450ccbbcd48fba3b5135011baddc760b6198dfdaaf2ccbb3351b4d3c8b9",
+    "PROGRAM/modules/write_messages_mod.f90": "32fdc91bcd5bebbd93cbc0461d9542eca09d3a88d1985be9b2212ded666b1df0"
+  },
+  "selection": "Retained source, license, optical data, inputs and archived outputs required by the supported 340 nm cases. Retained file hashes are unchanged.",
+  "cleanup": {
+    "date": "2026-10-22",
+    "previous_manifest_sha256": "aaa9f4ebde70e7ce61e797aeddda5ac046c2e864937bcc3aabee6c6c6ab70963",
+    "previous_file_count": 230,
+    "retained_file_count": 22
+  }
+}
