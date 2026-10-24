@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 from build_reference import ROOT, SOURCES, build
+from monki.environment import native_environment
 
 
 def build_cpu(*, save_path: bool = True) -> Path:
@@ -52,7 +53,7 @@ def build_cpu(*, save_path: bool = True) -> Path:
         "-c",
         str(local_source),
     ]
-    subprocess.run(compile_command, cwd=directory, check=True)
+    subprocess.run(compile_command, cwd=directory, check=True, env=native_environment())
 
     # Every physics/helper object comes from the reference build unchanged.
     # Only main.o is replaced with the persistent worker's orchestration.
@@ -70,7 +71,7 @@ def build_cpu(*, save_path: bool = True) -> Path:
         "-o",
         str(executable),
     ]
-    subprocess.run(link_command, cwd=directory, check=True)
+    subprocess.run(link_command, cwd=directory, check=True, env=native_environment())
     manifest.write_text(
         json.dumps(
             {

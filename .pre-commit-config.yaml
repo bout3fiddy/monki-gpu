@@ -36,8 +36,8 @@ repos:
         files: '^(pyproject.toml|uv.lock)$'
         pass_filenames: false
 
-      - id: metal-format
-        name: Metal and host bridge formatting
+      - id: gpu-format
+        name: GPU kernels and host bridge formatting
         entry: uv run clang-format --dry-run --Werror
         language: system
-        files: '^kernels/metal/.*\.(metal|m)$'
+        files: '^kernels/(metal|cuda|common)/.*\.(metal|m|h|cuh|cu|cpp)$'

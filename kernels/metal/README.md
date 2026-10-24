@@ -1,6 +1,6 @@
 # Metal backend
 
-Fortran prepares the optical tables; `transport.metal` runs photon histories.
+Fortran prepares the optical tables; `transport.metal` dispatches photon histories from `kernels/common/transport.h`.
 `bridge.m` owns Metal resources and dispatches. Python owns statistics and output.
 CPU photon transport is never used as a fallback.
 
@@ -49,7 +49,7 @@ Both retain physical slant lengths. `profile=True` records completed GPU command
 3. zunit, views, surface types, albedos, elevations, BETA, species fractions, gas albedos.
 4. Per aerosol: LUT size, albedo, cosines, bound CDF, F11, F22, F33, F12.
 
-`metal_tables.py` validates and packs float32 buffers. Bridge ABI v2 takes a round
+`gpu_tables.py` validates and packs float32 buffers. Bridge ABI v2 takes a round
 capacity and eight control words: photon count, first flattened photon, first
 statistical round, seed, traversal limit, profiling flag, photons per round,
 active round count. A stale bridge requires rebuilding.

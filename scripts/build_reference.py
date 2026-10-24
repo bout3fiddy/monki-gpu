@@ -8,6 +8,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from monki.environment import native_environment
+
 ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / "fortran/monki"
 BUILD = ROOT / "build/reference"
@@ -63,7 +65,9 @@ def build(*, save_path=True, save_scats=False):
     if not compiler or not config:
         raise RuntimeError("Install gfortran and NetCDF Fortran (nf-config) before building")
 
-    compiler_version = subprocess.check_output([compiler, "--version"], text=True).splitlines()[0]
+    compiler_version = subprocess.check_output(
+        [compiler, "--version"], text=True, env=native_environment()
+    ).splitlines()[0]
     flags = [
         "-O2",
         "-g",
@@ -73,13 +77,19 @@ def build(*, save_path=True, save_scats=False):
         "-fcheck=bounds",
         "-ffpe-trap=zero,overflow,invalid",
     ]
-    includes = shlex.split(subprocess.check_output([config, "--fflags"], text=True))
-    libraries = shlex.split(subprocess.check_output([config, "--flibs"], text=True))
+    includes = shlex.split(
+        subprocess.check_output([config, "--fflags"], text=True, env=native_environment())
+    )
+    libraries = shlex.split(
+        subprocess.check_output([config, "--flibs"], text=True, env=native_environment())
+    )
     # Some nf-config installations omit the separate NetCDF C library directory.
     nc_config = shutil.which("nc-config")
 
     if nc_config:
-        libraries += shlex.split(subprocess.check_output([nc_config, "--libs"], text=True))
+        libraries += shlex.split(
+            subprocess.check_output([nc_config, "--libs"], text=True, env=native_environment())
+        )
 
     # Covers the retained 30x20 two-box scene, 35 layers and 3 detector angles.
     limits = {"nx": 30, "ny": 20, "nz": 35, "nmat": 4, "na": 3}
@@ -138,12 +148,12 @@ def build(*, save_path=True, save_scats=False):
             str(local),
         ]
         commands.append(command)
-        subprocess.run(command, cwd=build_dir, check=True)
+        subprocess.run(command, cwd=build_dir, check=True, env=native_environment())
         objects.append(str(local.with_suffix(".o")))
 
     command = [compiler, "-fopenmp", *objects, *libraries, "-o", str(binary)]
     commands.append(command)
-    subprocess.run(command, cwd=build_dir, check=True)
+    subprocess.run(command, cwd=build_dir, check=True, env=native_environment())
     receipt.write_text(
         json.dumps(
             {

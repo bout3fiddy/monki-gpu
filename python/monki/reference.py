@@ -2,12 +2,12 @@
 
 import hashlib
 import json
-import os
 import subprocess
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .environment import native_environment
 from .input import ReferenceCase
 from .output import SimulationResult
 
@@ -118,7 +118,7 @@ class ReferenceRunner:
             "case.in",
             "result",
         ]
-        env = os.environ.copy()
+        env = native_environment()
         env.update(
             MONKI_HOME=str(directory) + "/",
             OMP_NUM_THREADS=str(self.threads),

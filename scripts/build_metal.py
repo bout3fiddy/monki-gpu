@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 from build_cpu import build_cpu
+from monki.environment import native_environment
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,7 +41,7 @@ def build_metal() -> Path:
         "-o",
         str(output),
     ]
-    subprocess.run(command, check=True)
+    subprocess.run(command, check=True, env=native_environment())
     receipt = {
         "command": command,
         "bridge_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),

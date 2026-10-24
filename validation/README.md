@@ -83,3 +83,16 @@ All twelve retained Apple M4 runs converged and passed archived-radiance checks.
 Median CPU/Metal times: clear 2.074/0.466 s; layered cloud 232.839/26.160 s.
 Maximum paired AMF difference: 3.493 combined estimated SE. Per-seed counts and
 results are in the retained reports.
+
+## CUDA gate
+
+`uv run python scripts/verify.py --cuda` requires NVIDIA hardware on Linux. It
+builds the CUDA bridge, enables the shared real-device tests and compares CUDA
+against CPU on all three fixtures with the existing statistical policy.
+`uv run python scripts/check_cuda_compile.py` provides NVRTC compilation evidence
+without GPU execution. These are separate gates.
+
+Select `--backend cuda` in `validation/benchmark.py` for CUDA measurements.
+Native build time is excluded; runtime shader specialization is included in
+preparation and end-to-end timings. Historical Metal evidence above retains its
+original workload and implementation context.

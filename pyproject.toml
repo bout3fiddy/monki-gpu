@@ -9,6 +9,11 @@ description = "MONKI radiative transfer interfaces and reference validation"
 requires-python = ">=3.14"
 dependencies = ["numpy>=2.0", "netCDF4>=1.7"]
 
+[project.optional-dependencies]
+runpod-worker = [
+    "runpod>=1.7,<2",
+]
+
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.2",
@@ -26,7 +31,7 @@ include = [
     "python/monki", "scripts", "tests", "kernels", "fortran/monki",
     "validation/cases", "validation/*.py", "validation/README.md",
     "README.md", "ARCHITECTURE.md", "STYLEGUIDE.md", "AGENTS.md",
-    "docs", "pyproject.toml", "uv.lock", ".pre-commit-config.yaml", ".clang-format",
+    "docs", "deployment", "containers", "pyproject.toml", "uv.lock", ".pre-commit-config.yaml", ".clang-format",
 ]
 
 [tool.pytest.ini_options]

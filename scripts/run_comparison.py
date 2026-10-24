@@ -1,4 +1,4 @@
-"""Run original MONKI and Metal, then plot TOA reflectance and layer AMFs."""
+"""Run original MONKI and a GPU backend, then plot TOA reflectance and layer AMFs."""
 
 import argparse
 import json
@@ -13,10 +13,11 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
+from build_cuda import build_cuda
 from build_metal import build_metal
 from build_reference import build
 from monki import ReferenceCase, ReferenceRunner, simulate
-from monki.execution import Metal
+from monki.execution import CUDA, Metal
 from monki.validation import compare
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,7 @@ def main():
     """Build, run both solvers with identical conditions, and save comparisons."""
 
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--backend", choices=("metal", "cuda"), default="metal")
     parser.add_argument("--case", choices=("clear", "layered-cloud"), default="clear")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--photons-per-column", type=int, default=2_000)
@@ -48,7 +50,7 @@ def main():
 
     # Compile before timing so the table measures simulation execution.
     reference_executable = build()
-    build_metal()
+    {"metal": build_metal, "cuda": build_cuda}[args.backend]()
 
     # Run Victor's original main program in an isolated directory.
     runner = ReferenceRunner(
@@ -60,26 +62,29 @@ def main():
     reference = runner.run(case, output / "reference")
     reference_seconds = perf_counter() - started
 
-    # The same scene and photon budget go through the persistent Metal backend.
-    backend = Metal()
+    # The same scene and photon budget go through the persistent GPU backend.
+    backend = {"metal": Metal, "cuda": CUDA}[args.backend]()
     started = perf_counter()
-    metal = simulate(case, backend=backend, output=output / "metal.nc")
+    metal = simulate(case, backend=backend, output=output / f"{args.backend}.nc")
     metal_seconds = perf_counter() - started
 
     comparison = compare(reference, metal)
     report = {
         "case": asdict(case),
         "threads": args.threads,
+        "backend": backend.backend_name,
         "device": backend.provenance["device"],
-        "timing_scope": "single run; setup, transport and output; compilation excluded",
+        "timing_scope": (
+            "single run; setup, runtime compilation, transport and output; build excluded"
+        ),
         "reference_seconds": reference_seconds,
-        "metal_seconds": metal_seconds,
+        f"{args.backend}_seconds": metal_seconds,
         "radiance_comparison": comparison.to_dict(),
     }
     plot_comparison(reference, metal, report, output)
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     print(f"Radiance comparison: {'PASS' if comparison.passed else 'FAIL'}")
-    print(f"Reference: {reference_seconds:.3f} s; Metal: {metal_seconds:.3f} s")
+    print(f"Reference: {reference_seconds:.3f} s; {backend.backend_name}: {metal_seconds:.3f} s")
     print(output.resolve() / "comparison.png")
     return 0 if comparison.passed else 1
 
@@ -90,6 +95,7 @@ def plot_comparison(reference, metal, report, output):
     plt.rcParams.update({"font.family": "monospace", "font.size": 9})
     figure = plt.figure(figsize=(13, 11), layout="constrained")
     grid = figure.add_gridspec(3, 3, height_ratios=(1, 1.3, 0.8))
+    gpu_name = report.get("backend", "Metal")
     a, b = reference.values, metal.values
     mu0 = np.cos(np.deg2rad(a["theta0"].item()))
     rows = []
@@ -100,7 +106,7 @@ def plot_comparison(reference, metal, report, output):
         x = a["radiance"][:, 0, 0, component, 0] / mu0
         y = b["radiance"][:, 0, 0, component, 0] / mu0
 
-        for values, name, marker in ((a, "Reference", "o"), (b, "Metal", "x")):
+        for values, name, marker in ((a, "Reference", "o"), (b, gpu_name, "x")):
             axis.errorbar(
                 values["theta"],
                 values["radiance"][:, 0, 0, component, 0] / mu0,
@@ -125,7 +131,7 @@ def plot_comparison(reference, metal, report, output):
         x = a["AMF_layer"][view, :, 0, 0, 0]
         y = b["AMF_layer"][view, :, 0, 0, 0]
         axis.plot(x, altitude, label="Reference")
-        axis.plot(y, altitude, "--", label="Metal")
+        axis.plot(y, altitude, "--", label=gpu_name)
         axis.set(title=f"Layer AMF · view {angle:g}°", xlabel="AMF", ylabel="Altitude (km)")
         axis.legend()
         axis.grid(alpha=0.2)
@@ -145,11 +151,11 @@ def plot_comparison(reference, metal, report, output):
     table.auto_set_font_size(False)
     table.set_fontsize(9)
     table.scale(1, 1.5)
-    cpu, gpu = report["reference_seconds"], report["metal_seconds"]
+    cpu, gpu = report["reference_seconds"], report[f"{gpu_name.lower()}_seconds"]
     passed = report["radiance_comparison"]["passed"]
     table_axis.set_title(
-        f"Reference ({report['threads']} threads): {cpu:.3f} s | Metal: {gpu:.3f} s | "
-        f"Reference/Metal: {cpu / gpu:.2f}×\n"
+        f"Reference ({report['threads']} threads): {cpu:.3f} s | {gpu_name}: {gpu:.3f} s | "
+        f"Reference/{gpu_name}: {cpu / gpu:.2f}×\n"
         f"Single run, setup + transport + output | Radiance check: {'PASS' if passed else 'FAIL'}"
     )
     case = report["case"]

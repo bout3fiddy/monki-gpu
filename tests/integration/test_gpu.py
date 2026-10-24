@@ -1,6 +1,7 @@
 """Real-device checks: no CPU transport fallback, physics helpers, and lifecycle."""
 
 import json
+import os
 import platform
 import subprocess
 from dataclasses import replace
@@ -9,34 +10,47 @@ from pathlib import Path
 import numpy as np
 import pytest
 from monki import ReferenceCase, simulate
-from monki.execution import CPU, BatchControls, Metal
+from monki.execution import CPU, CUDA, BatchControls, Metal
+from monki.execution.gpu_source import kernel_source
 from monki.validation import check_result, compare
 
 ROOT = Path(__file__).resolve().parents[2]
 CASE = ReferenceCase("clear", "testrun/MONKI_MLS_cloudfree_340_340_test.in")
+GPU = Metal if platform.system() == "Darwin" else CUDA
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.skipif(platform.system() != "Darwin", reason="Metal requires macOS"),
+    pytest.mark.skipif(
+        platform.system() != "Darwin" and os.environ.get("MONKI_TEST_CUDA") != "1",
+        reason="CUDA device tests require MONKI_TEST_CUDA=1",
+    ),
 ]
 
 
 def probe_kernel(tmp_path, body):
     """Dispatch production helpers in isolation, without reimplementing their equations."""
 
-    source = (ROOT / "kernels/metal/transport.metal").read_text()
-    prefix = source[: source.index("kernel void monte_carlo")]
+    source = kernel_source(GPU.default_kernel).decode()
+
+    marker = "kernel void monte_carlo" if GPU is Metal else 'extern "C" __global__ void monte_carlo'
+    prefix = source[: source.index(marker)]
     path = tmp_path / "probe.metal"
-    path.write_text(
-        prefix
-        + """
+
+    if GPU is Metal:
+        entry = """
 kernel void monte_carlo(device const float *data [[buffer(0)]],
                        device float *output [[buffer(1)]],
                        uint lane [[thread_position_in_grid]]) {
     if (lane != 0) return;
 """
-        + body
-        + "\n}\n"
-    )
+    else:
+        entry = """
+extern "C" __global__ void monte_carlo(const float *data, float *output,
+                                      unsigned int *, const unsigned int *) {
+    if (blockIdx.x * blockDim.x + threadIdx.x != 0) return;
+"""
+        body = body.replace("as_type<float>", "__uint_as_float").replace("device ", "")
+
+    path.write_text(prefix + entry + body + "\n}\n")
     return path
 
 
@@ -51,7 +65,7 @@ def test_gpu_philox_matches_published_known_answer(tmp_path):
     """,
     )
 
-    with Metal(kernel=kernel, tally_shards=1) as backend:
+    with GPU(kernel=kernel, tally_shards=1) as backend:
         backend.prepare(CASE)
         batch = backend.run_batch(BatchControls(1, 1))
 
@@ -96,20 +110,20 @@ def test_polarization_helpers_match_original_fortran(tmp_path):
     """,
     )
 
-    with Metal(kernel=kernel, tally_shards=1) as backend:
+    with GPU(kernel=kernel, tally_shards=1) as backend:
         backend.prepare(CASE)
         result = backend.run_batch(BatchControls(1, 1))
 
     np.testing.assert_allclose(result.stokes.ravel(order="F"), expected, rtol=1e-5, atol=1e-7)
 
 
-def test_metal_never_uses_cpu_photon_transport(monkeypatch):
+def test_gpu_never_uses_cpu_photon_transport(monkeypatch):
     def forbid_cpu_batch(*args):
         raise AssertionError("Metal attempted CPU photon transport")
 
     monkeypatch.setattr(CPU, "run_batch", forbid_cpu_batch)
 
-    with Metal() as backend:
+    with GPU() as backend:
         backend.prepare(CASE)
         first = backend.run_batch(BatchControls(1, 200))
         snapshot = first.stokes.copy()
@@ -131,7 +145,7 @@ def test_metal_never_uses_cpu_photon_transport(monkeypatch):
 
 
 def test_chunking_preserves_photon_streams():
-    with Metal(photons_per_dispatch=32) as small, Metal(photons_per_dispatch=200) as large:
+    with GPU(photons_per_dispatch=32) as small, GPU(photons_per_dispatch=200) as large:
         small.prepare(CASE)
         large.prepare(CASE)
         a = small.run_batch(BatchControls(1, 200))
@@ -145,7 +159,7 @@ def test_off_plane_polarization_matches_cpu(tmp_path):
         CASE, photons_per_column=2000, solar_azimuth=37, view_azimuth=109, view_zeniths=(20, 45, 70)
     )
     cpu = simulate(case, CPU(), tmp_path / "cpu.nc")
-    metal = simulate(case, Metal(seed=881), tmp_path / "metal.nc")
+    metal = simulate(case, GPU(seed=881), tmp_path / "metal.nc")
     result = compare(cpu, metal)
     assert result.passed, result.details
     assert check_result(metal) == []
@@ -153,7 +167,7 @@ def test_off_plane_polarization_matches_cpu(tmp_path):
 
 
 def test_truncated_histories_fail_and_release_session():
-    with Metal(max_steps=1) as backend:
+    with GPU(max_steps=1) as backend:
         backend.prepare(CASE)
 
         with pytest.raises(RuntimeError, match="round rejected"):
@@ -164,7 +178,7 @@ def test_truncated_histories_fail_and_release_session():
 
 
 def test_invalid_device_does_not_fall_back():
-    with Metal(device=2**32 - 1) as backend:
+    with GPU(device=2**32 - 1) as backend:
         with pytest.raises(RuntimeError, match="unavailable"):
             backend.prepare(CASE)
 
@@ -172,7 +186,7 @@ def test_invalid_device_does_not_fall_back():
 
 
 def test_batch_validation_precedes_dispatch():
-    with Metal() as backend:
+    with GPU() as backend:
         backend.prepare(CASE)
 
         with pytest.raises(ValueError, match="sequential"):
@@ -183,13 +197,13 @@ def test_batch_validation_precedes_dispatch():
 
 
 def test_backward_mode_is_explicitly_unsupported():
-    with Metal() as backend, pytest.raises(NotImplementedError, match="backward"):
+    with GPU() as backend, pytest.raises(NotImplementedError, match="backward"):
         backend.prepare(replace(CASE, backward=True))
 
 
 @pytest.mark.parametrize("field,value", [(0, 2), (4, 4), (6, 2), (7, 0), (9, 0)])
 def test_unsupported_prepared_tables_are_rejected(field, value):
-    from monki.execution.metal_tables import pack_tables
+    from monki.execution.gpu_tables import pack_tables
 
     with CPU() as preparer:
         preparer.prepare(CASE)
@@ -213,7 +227,7 @@ def test_scalar_transport_matches_cpu(tmp_path):
     fixture.write_text("\n".join(lines) + "\n")
     case = replace(CASE, photons_per_column=2000)
     cpu = simulate(case, CPU(upstream=upstream), tmp_path / "scalar-cpu.nc")
-    gpu = simulate(case, Metal(upstream=upstream), tmp_path / "scalar-metal.nc")
+    gpu = simulate(case, GPU(upstream=upstream), tmp_path / "scalar-metal.nc")
     result = compare(cpu, gpu)
     assert result.passed, result.details
     assert gpu.radiance.shape[-2] == 1
@@ -231,9 +245,14 @@ def test_scalar_transport_matches_cpu(tmp_path):
 )
 def test_invalid_kernel_fails_without_leaving_a_session(tmp_path, source, message):
     kernel = tmp_path / "invalid.metal"
+
+    if GPU is CUDA and "metal_stdlib" in source:
+        source = 'extern "C" __global__ void other() {}'
+        message = "named symbol not found"
+
     kernel.write_text(source)
 
-    with Metal(kernel=kernel, tally_shards=1) as backend:
+    with GPU(kernel=kernel, tally_shards=1) as backend:
         with pytest.raises(RuntimeError, match=message):
             backend.prepare(CASE)
 
@@ -252,7 +271,7 @@ def test_invalid_kernel_fails_without_leaving_a_session(tmp_path, source, messag
     ],
 )
 def test_configuration_changes_require_reprepare(setting, value):
-    with Metal() as backend:
+    with GPU() as backend:
         backend.prepare(CASE)
         setattr(backend, setting, value)
 
@@ -270,8 +289,8 @@ def test_shard_reduction_preserves_all_estimators(save_path):
         case = ReferenceCase(**json.loads((ROOT / "validation/cases/box-clouds.json").read_text()))
 
     with (
-        Metal(tally_shards=1, save_path=save_path) as single,
-        Metal(tally_shards=32, save_path=save_path, profile=True) as sharded,
+        GPU(tally_shards=1, save_path=save_path) as single,
+        GPU(tally_shards=32, save_path=save_path, profile=True) as sharded,
     ):
         single.prepare(case)
         sharded.prepare(case)
@@ -293,8 +312,8 @@ def test_large_dispatch_preserves_3d_photon_streams_and_tail():
     case = ReferenceCase(**json.loads((ROOT / "validation/cases/box-clouds.json").read_text()))
 
     with (
-        Metal(save_path=False, photons_per_dispatch=4096, tally_shards=1) as small,
-        Metal(save_path=False) as large,
+        GPU(save_path=False, photons_per_dispatch=4096, tally_shards=1) as small,
+        GPU(save_path=False) as large,
     ):
         small.prepare(case)
         large.prepare(case)
@@ -310,7 +329,7 @@ def test_large_dispatch_preserves_3d_photon_streams_and_tail():
 def test_grouped_rounds_preserve_individual_streams_and_partial_group():
     requests = [BatchControls(index, 200) for index in range(1, 36)]
 
-    with Metal() as grouped, Metal() as sequential:
+    with GPU() as grouped, GPU() as sequential:
         grouped.prepare(CASE)
         sequential.prepare(CASE)
         actual = grouped.run_batches(requests)
@@ -330,7 +349,7 @@ def test_grouped_rounds_preserve_individual_streams_and_partial_group():
 
 
 def test_grouped_rounds_validate_all_requests_before_dispatch():
-    with Metal() as backend:
+    with GPU() as backend:
         backend.prepare(CASE)
 
         with pytest.raises(ValueError, match="sequential"):
@@ -344,7 +363,7 @@ def test_grouped_rounds_validate_all_requests_before_dispatch():
 
 
 def test_grouped_failure_rejects_all_rounds_and_closes():
-    with Metal(max_steps=1) as backend:
+    with GPU(max_steps=1) as backend:
         backend.prepare(CASE)
 
         with pytest.raises(RuntimeError, match="round rejected"):
@@ -379,8 +398,8 @@ def test_uniform_tail_matches_explicit_detector_traversal(tmp_path, name):
     slow.write_text(fast.read_text().replace("if (ray.k >= MONKI_UNIFORM_TOP)", "if (false)"))
 
     with (
-        Metal(kernel=fast, tally_shards=1, save_path=name != "box-clouds") as optimized,
-        Metal(kernel=slow, tally_shards=1, save_path=name != "box-clouds") as explicit,
+        GPU(kernel=fast, tally_shards=1, save_path=name != "box-clouds") as optimized,
+        GPU(kernel=slow, tally_shards=1, save_path=name != "box-clouds") as explicit,
     ):
         optimized.prepare(case)
         explicit.prepare(case)
@@ -394,7 +413,7 @@ def test_uniform_tail_matches_explicit_detector_traversal(tmp_path, name):
 
 
 def test_uniform_tail_never_averages_a_varying_layer():
-    from monki.execution.metal_tables import pack_tables
+    from monki.execution.gpu_tables import pack_tables
 
     case = ReferenceCase(**json.loads((ROOT / "validation/cases/box-clouds.json").read_text()))
 
@@ -418,8 +437,8 @@ def test_stale_bridge_is_rejected_before_native_call(monkeypatch):
 
     monkeypatch.setattr(ctypes, "CDLL", lambda path: object())
 
-    with Metal() as backend:
-        with pytest.raises(RuntimeError, match="Rebuild the Metal bridge"):
+    with GPU() as backend:
+        with pytest.raises(RuntimeError, match=f"Rebuild the {GPU.backend_name} bridge"):
             backend.prepare(CASE)
 
         assert backend._handle is None

@@ -1,7 +1,7 @@
 """Enforce the strategy interface and prevent pretend execution or CPU fallback."""
 
 import pytest
-from monki.execution import CPU, Backend, Metal
+from monki.execution import CPU, CUDA, Backend, Metal
 
 
 def test_backend_is_abstract():
@@ -58,7 +58,7 @@ def test_context_manager_closes_on_success_and_failure():
     assert backend.events.count(("close", None)) == 2
 
 
-@pytest.mark.parametrize("backend_type", [CPU, Metal])
+@pytest.mark.parametrize("backend_type", [CPU, Metal, CUDA])
 def test_cpu_and_metal_do_not_accept_cloud_settings(backend_type):
     with pytest.raises(TypeError):
         backend_type(provider="aws")
@@ -95,6 +95,7 @@ def test_invalid_settings_fail_before_any_execution(backend_type, settings):
         {"save_path": "yes"},
     ],
 )
-def test_invalid_metal_settings_fail_before_gpu_access(settings):
+@pytest.mark.parametrize("backend_type", [Metal, CUDA])
+def test_invalid_gpu_settings_fail_before_gpu_access(settings, backend_type):
     with pytest.raises(ValueError):
-        Metal(**settings)
+        backend_type(**settings)

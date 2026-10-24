@@ -1,4 +1,4 @@
-"""Compare fixed-work CPU and Metal performance with statistical output checks."""
+"""Compare fixed-work CPU and GPU performance with statistical output checks."""
 
 import argparse
 import json
@@ -11,7 +11,7 @@ from statistics import median
 from time import perf_counter
 
 from monki import ReferenceCase, simulate
-from monki.execution import CPU, Backend, Metal, RawTallies
+from monki.execution import CPU, CUDA, Backend, Metal, RawTallies
 from monki.validation import compare
 from path_statistics import PathRecorder, compare_paths
 
@@ -62,8 +62,7 @@ class TimedBackend(Backend):
 def run_benchmark(args: argparse.Namespace) -> Path:
     """Run fresh sessions, alternating device order, and preserve every measured output."""
 
-    if platform.system() != "Darwin":
-        raise ValueError("This comparison requires a Mac with Metal; there is no CPU fallback")
+    backend_type = {"metal": Metal, "cuda": CUDA}[args.backend]
 
     cases = []
 
@@ -100,8 +99,10 @@ def run_benchmark(args: argparse.Namespace) -> Path:
             "transport": "synchronous run_batches including copies, dispatch and owned results",
             "end_to_end": "simulate including preparation, statistics, NetCDF, receipt and cleanup",
             "validation": "radiance and enabled layer AMFs; outside timed simulate calls",
-            "precision": "CPU float64 versus Metal float32 transport; different random streams",
-            "scope": "fixed photon count; compilation excluded",
+            "precision": (
+                f"CPU float64 versus {args.backend} float32 transport; different random streams"
+            ),
+            "scope": "fixed photon count; native build excluded, runtime specialization included",
         },
         "cases": [],
         "passed": True,
@@ -113,11 +114,11 @@ def run_benchmark(args: argparse.Namespace) -> Path:
             f"cpu-{n}": lambda n=n, paths=paths: CPU(threads=n, save_path=paths)
             for n in args.threads
         }
-        factories["metal"] = lambda paths=paths: Metal(
+        factories[args.backend] = lambda paths=paths: backend_type(
             save_path=paths,
-            photons_per_dispatch=args.metal_dispatch_size,
-            tally_shards=args.metal_tally_shards,
-            profile=args.profile_metal,
+            photons_per_dispatch=args.gpu_dispatch_size,
+            tally_shards=args.gpu_tally_shards,
+            profile=args.profile_gpu,
         )
         samples = {name: [] for name in factories}
         entry = {"case": asdict(case), "save_path": paths, "samples": samples, "comparisons": []}
@@ -170,12 +171,12 @@ def run_benchmark(args: argparse.Namespace) -> Path:
 
             # Validate every measured result before presenting a speed ratio as usable.
             for name in factories:
-                if name == "metal":
+                if name == args.backend:
                     continue
 
-                radiance = compare(results[name], results["metal"])
+                radiance = compare(results[name], results[args.backend])
                 amf = compare_paths(
-                    results[name], results["metal"], recorders[name], recorders["metal"]
+                    results[name], results[args.backend], recorders[name], recorders[args.backend]
                 )
                 passed = radiance.passed and amf["passed"]
                 entry["comparisons"].append(
@@ -204,11 +205,13 @@ def run_benchmark(args: argparse.Namespace) -> Path:
         entry["medians"] = summary
         entry["speedups"] = {
             name: {
-                "transport": values["transport_seconds"] / summary["metal"]["transport_seconds"],
-                "end_to_end": values["end_to_end_seconds"] / summary["metal"]["end_to_end_seconds"],
+                "transport": values["transport_seconds"]
+                / summary[args.backend]["transport_seconds"],
+                "end_to_end": values["end_to_end_seconds"]
+                / summary[args.backend]["end_to_end_seconds"],
             }
             for name, values in summary.items()
-            if name != "metal"
+            if name != args.backend
         }
         (destination / "report.json").write_text(json.dumps(report, indent=2) + "\n")
 
@@ -221,7 +224,7 @@ def run_benchmark(args: argparse.Namespace) -> Path:
                 f"{speedup['transport']:>18.2f}x {speedup['end_to_end']:>20.2f}x"
             )
 
-    print("Speedup = CPU time / Metal time; below 1 means Metal is slower.")
+    print(f"Speedup = CPU time / {args.backend} time; below 1 means GPU is slower.")
     print(f"Statistical checks: {'PASS' if report['passed'] else 'FAIL — do not accept speedups'}")
     print(destination / "report.json")
 
@@ -235,16 +238,29 @@ def main() -> None:
     """Parse an explicit fixed workload; require enough rounds for error estimates."""
 
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--backend", choices=("metal", "cuda"), default="metal")
     parser.add_argument("--case", action="append", choices=CASES)
     parser.add_argument("--threads", nargs="+", type=int, default=[1, 4])
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--rounds", type=int, default=32)
     parser.add_argument("--photons-per-column", type=int)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--metal-dispatch-size", type=int, default=65536)
-    parser.add_argument("--metal-tally-shards", type=int, default=32)
     parser.add_argument(
-        "--profile-metal", action="store_true", help="Record completed GPU command time in receipts"
+        "--gpu-dispatch-size",
+        "--metal-dispatch-size",
+        dest="gpu_dispatch_size",
+        type=int,
+        default=65536,
+    )
+    parser.add_argument(
+        "--gpu-tally-shards", "--metal-tally-shards", dest="gpu_tally_shards", type=int, default=32
+    )
+    parser.add_argument(
+        "--profile-gpu",
+        "--profile-metal",
+        dest="profile_gpu",
+        action="store_true",
+        help="Record completed GPU command time in receipts",
     )
     args = parser.parse_args()
 
@@ -254,8 +270,8 @@ def main() -> None:
     if args.photons_per_column is not None and args.photons_per_column < 1:
         parser.error("photons per column must be positive")
 
-    if not 1 <= args.metal_dispatch_size <= 65536 or not 1 <= args.metal_tally_shards <= 64:
-        parser.error("Metal dispatch size must be 1..65536 and tally shards 1..64")
+    if not 1 <= args.gpu_dispatch_size <= 65536 or not 1 <= args.gpu_tally_shards <= 64:
+        parser.error("GPU dispatch size must be 1..65536 and tally shards 1..64")
 
     args.threads = list(dict.fromkeys(args.threads))
     run_benchmark(args)

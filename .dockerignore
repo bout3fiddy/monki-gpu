@@ -1,0 +1,13 @@
+.git
+.venv
+build
+results
+scratch
+validation/runs
+**/__pycache__
+**/.pytest_cache
+.env
+.env.*
+*.pem
+*.key
+.zshrc

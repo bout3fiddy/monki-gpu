@@ -16,7 +16,8 @@ E/F/I/UP/B/SIM rules; the AST checker enforces paragraph spacing and rejects fut
 annotations. Basedpyright checks types.
 
 New Fortran uses explicit kinds, `implicit none`, declared `intent` and named modules.
-Metal changes must explain precision, RNG, reductions and geometry differences.
+GPU changes must explain precision, RNG, reductions and geometry differences.
+Shared transport changes require validation on both Metal and CUDA.
 
 ```sh
 uv run ruff format python scripts tests validation

@@ -1,7 +1,6 @@
 """Persistent local Fortran sessions retaining Victor's transport and RNG state."""
 
 import json
-import os
 import subprocess
 from contextlib import suppress
 from dataclasses import asdict, replace
@@ -12,6 +11,7 @@ from threading import Thread
 
 import numpy as np
 
+from ..environment import native_environment
 from ..input import ReferenceCase
 from ..output import SimulationResult
 from ..reference import file_hash, fixture_text
@@ -124,7 +124,7 @@ class CPU(Backend):
                 "case.in",
                 "result",
             ]
-            env = os.environ.copy()
+            env = native_environment()
             env.update(
                 MONKI_HOME=str(directory) + "/",
                 OMP_NUM_THREADS=str(self.threads),

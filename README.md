@@ -1,9 +1,10 @@
 # MONKI
 
 Monte Carlo radiative transfer by Victor J.H. Trees, with Python interfaces,
-local CPU and Apple Metal backends, NetCDF output and reference validation.
-CPU transport reuses Victor's Fortran; Metal translates the transport kernels.
-CUDA and cloud execution are not implemented.
+CPU, Apple Metal and NVIDIA CUDA backends, NetCDF output and reference validation.
+CPU transport reuses Victor's Fortran; Metal and CUDA compile shared transport equations.
+Runpod Serverless support submits complete CUDA simulations through an abstract provider interface.
+CUDA and remote execution require NVIDIA validation before scientific use.
 
 ## Setup
 
@@ -52,6 +53,15 @@ fixtures. CPU supports forward/backward tracing; Metal supports forward I or
 I/Q/U, one aerosol species, flat Lambertian surfaces, periodic grids and a
 source/detector/output grid at top of atmosphere. Unsupported options fail.
 Build limits: 30 × 20 pixels, 35 layers including vacuum, three viewing angles.
+
+## NVIDIA and remote jobs
+
+CUDA requires Linux, NVIDIA drivers and CUDA 12.8 headers/NVRTC. Build with
+`uv run python scripts/build_cuda.py`, then use `CUDA()` from `monki.execution`.
+Run `uv run python scripts/verify.py --cuda` for the required real-device gate.
+The default macOS gate exercises Metal and preserves the independent CPU reference.
+
+[CUDA details](kernels/cuda/README.md) · [Runpod Serverless setup](containers/cuda/README.md)
 
 ## AMF stopping
 

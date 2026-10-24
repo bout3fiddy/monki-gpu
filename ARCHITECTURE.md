@@ -6,8 +6,8 @@ Victor's retained Fortran sources remain unchanged in `fortran/monki/upstream/`.
 ## Execution
 
 `Backend` defines `prepare`, `run_batch` and `close`. `run_batches` defaults to
-sequential rounds; Metal can group rounds with separate tallies and random streams.
-`CPU` and `Metal` implement this interface. The driver does not switch on backend type.
+sequential rounds; GPU backends can group rounds with separate tallies and random streams.
+`CPU`, `Metal` and `CUDA` implement this interface. The driver does not switch on backend type.
 
 1. `ReferenceCase` validates inputs and controls.
 2. `prepare` loads the scene and optical tables once.
@@ -19,10 +19,26 @@ sequential rounds; Metal can group rounds with separate tallies and random strea
 
 [CPU](kernels/cpu/README.md) uses a persistent Fortran process and OpenMP.
 [Metal](kernels/metal/README.md) reuses Fortran preparation, retains GPU buffers
-and dispatches translated transport through an Objective-C bridge.
+and dispatches shared transport through an Objective-C bridge.
+[CUDA](kernels/cuda/README.md) uses a CUDA driver/NVRTC bridge on Linux.
+Both compile [shared physics](kernels/common/README.md) with small platform adapters.
+`GPUBackend` owns common preparation, grouping, shard reductions and buffer ownership.
 Each session allows one caller; returned arrays survive later batches and closure.
 
-CPU transport is float64 with the compiler RNG. Metal uses float32 with Philox;
+CPU transport is float64 with the compiler RNG. GPU transport uses float32 with Philox;
 host statistics use float64. Equal seeds do not produce matching photon paths.
 AMFs divide accumulated weighted paths by weights and layer thickness;
 uncertainty retains path/weight covariance. See [validation](validation/README.md).
+
+## Remote execution
+
+`cloud.Provider` defines submit, status and cancel; shared polling returns completed
+job output. `RunpodServerless` implements the queue API. One remote job executes a
+complete simulation, including convergence and output, inside the CUDA worker.
+Credentials remain in the provider client. Native/compiler environments remove
+`RUNPOD_API_KEY`; the scientific backend receives only validated inputs.
+
+The versioned job schema supports bundled fixtures and bounded inline artifacts.
+Results include checksummed NetCDF and run receipts. Provider transport, remote
+status and result retrieval remain separate from the scientific `Backend` interface.
+See [deployment](containers/cuda/README.md).

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from monki import ReferenceCase, ReferenceRunner, SimulationResult, simulate
-from monki.execution import CPU, Metal
+from monki.execution import CPU, CUDA, Metal
 from monki.validation import check_result, compare, select_views
 from path_statistics import PathRecorder, compare_paths
 
@@ -20,12 +20,15 @@ GOLDENS = {
 }
 
 
-def run_suite(destination: Path, selected: list[str], *, metal: bool = False) -> bool:
+def run_suite(
+    destination: Path, selected: list[str], *, metal: bool = False, cuda: bool = False
+) -> bool:
     destination.mkdir(parents=True, exist_ok=False)
     report = {
         "schema_version": 1,
-        "scope": "CPU vs original/archived outputs; optional Metal vs CPU",
+        "scope": "CPU vs original/archived outputs; optional GPU vs CPU",
         "metal_requested": metal,
+        "cuda_requested": cuda,
         "statistical_policy": {
             "family_error_rate": 1e-6,
             "absolute_tolerance": 1e-10,
@@ -58,17 +61,19 @@ def run_suite(destination: Path, selected: list[str], *, metal: bool = False) ->
                 passed=comparison.passed and deterministic.passed,
             )
 
-            if metal:
-                metal_rounds = PathRecorder(Metal(save_path=name != "box-clouds"))
-                gpu = simulate(case, metal_rounds, destination / f"{name}-metal.nc")
+            for label, backend_type in (("metal", Metal), ("cuda", CUDA)):
+                if not (metal if label == "metal" else cuda):
+                    continue
+
+                metal_rounds = PathRecorder(backend_type(save_path=name != "box-clouds"))
+                gpu = simulate(case, metal_rounds, destination / f"{name}-{label}.nc")
                 gpu_comparison = compare(candidate, gpu)
                 path_comparison = compare_paths(candidate, gpu, cpu_rounds, metal_rounds)
-                entry.update(
-                    metal_comparison=gpu_comparison.to_dict(),
-                    metal_path_comparison=path_comparison,
-                    metal_device=metal_rounds.provenance["device"],
-                    gpu_dispatches=metal_rounds.provenance["gpu_dispatches"],
-                    passed=entry["passed"] and gpu_comparison.passed and path_comparison["passed"],
+                entry[f"{label}_comparison"] = gpu_comparison.to_dict()
+                entry[f"{label}_path_comparison"] = path_comparison
+                entry[f"{label}_device"] = metal_rounds.provenance["device"]
+                entry["passed"] = (
+                    entry["passed"] and gpu_comparison.passed and path_comparison["passed"]
                 )
         except Exception as exc:
             entry.update(passed=False, error=str(exc))
@@ -88,9 +93,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--metal", action="store_true", help="Also compare real Metal GPU transport"
     )
+    parser.add_argument("--cuda", action="store_true", help="Require real CUDA transport")
     args = parser.parse_args()
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     destination = args.output or ROOT / "validation/runs" / stamp
-    success = run_suite(destination, args.case or list(GOLDENS), metal=args.metal)
+    success = run_suite(destination, args.case or list(GOLDENS), metal=args.metal, cuda=args.cuda)
     print(destination / "report.json")
     raise SystemExit(0 if success else 1)

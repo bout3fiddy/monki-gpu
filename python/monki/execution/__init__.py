@@ -2,7 +2,8 @@
 
 from .backend import Backend
 from .cpu import CPU
+from .cuda import CUDA
 from .metal import Metal
 from .tallies import BatchControls, RawTallies
 
-__all__ = ["Backend", "CPU", "Metal", "BatchControls", "RawTallies"]
+__all__ = ["Backend", "CPU", "CUDA", "Metal", "BatchControls", "RawTallies"]
